@@ -2,17 +2,44 @@
 
 require 'vendor/autoload.php';
 
-$client = new Predis\Client([
-    'scheme' => 'tcp',
-    'host' => '127.0.0.1',
-    'port' => '6379',
-    'password' => null
-]);
+$app = new \Slim\App(([
+    'settings' => [
+        'displayErrorDetails' => true
+    ]
+]));
 
-$client->set('name', 'panda');
+$container = $app->getContainer();
 
-$cache = new App\Cache\RedisAdapter($client);
+$container['config'] = function () {
+    return new Noodlehaus\Config([
+       __DIR__ .'/config/cache.php',
+    ]);
+};
 
-$name = $cache->remember('name', 0.1, function () {
-   return 'panda';
+$container['cache'] = function ($container) {
+    $client = new Predis\Client([
+        'scheme' => 'tcp',
+        'host' => $container->config->get('cache.connections.redis.host'),
+        'port' => $container->config->get('cache.connections.redis.port'),
+        'password' => $container->config->get('cache.connections.redis.password')
+    ]);
+
+    return new App\Cache\RedisAdapter($client);
+};
+
+$app->get('/', function ($request, $response) {
+    $users = $this->cache->remember('users', 10, function () {
+        $users = [
+            ['username' => 'John'],
+            ['username' => 'Jane'],
+            ['username' => 'Jack'],
+            ['username' => 'Jill'],
+        ];
+
+        return json_encode($users);
+    });
+
+    return $response->withHeader('Content-Type', 'application/json')->write($users);
 });
+
+$app->run();
