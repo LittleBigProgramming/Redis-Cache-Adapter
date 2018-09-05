@@ -9,10 +9,10 @@ $client = new Predis\Client([
     'password' => null
 ]);
 
-$client->set('name', 'panda');
+$client->set('name', 'An Amazing Name');
 
 $cache = new App\Cache\RedisAdapter($client);
 
 $name = $cache->remember('name', 0.1, function () {
-   return 'panda';
+   return 'An Amazing Name';
 });
